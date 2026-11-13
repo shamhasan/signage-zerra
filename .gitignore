@@ -1,0 +1,6 @@
+be-zerra-signage/
+fe-zerra-getcontent/
+
+*.sql
+.env
+.DS_Store

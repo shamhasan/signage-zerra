@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: postgres-zerra
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: signage_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_zerra_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d signage_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./be-zerra-signage
+      dockerfile: Dockerfile
+    image: be-zerra-signage:latest
+    container_name: be-zerra-signage
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./be-zerra-signage/.env
+    environment:
+      APP_PORT: 8080
+      DB_DSN: postgres://postgres:postgres@db:5432/signage_db?sslmode=disable
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./be-zerra-signage/log:/app/log
+
+  frontend:
+    build:
+      context: ./fe-zerra-getcontent
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    image: fe-zerra-signage:latest
+    container_name: fe-zerra-signage
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_zerra_data:
